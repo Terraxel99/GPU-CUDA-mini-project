@@ -7,6 +7,9 @@
 
 #define NB_THREADS 128
 
+using namespace std;
+
+void multiplication_iteration(const int array_size);
 void initialize_arrays(int* a, int* b, int arr_size);
 long long cpu_computation(int* a, int* b, int* cpu_res, int arr_size);
 float gpu_computation(int* host_a, int* host_b, int* host_c, int* cpu_results, int arr_size);
@@ -25,8 +28,19 @@ __global__ void gpu_multiply_kernel(const int* a, const int* b, int* c, int arr_
 }
 
 int main() {
-	const int array_size = 100000;
+	int iterations_sizes[] = { 10, 100, 1000, 10000, 100000, 500000, 1000000, 2500000, 5000000, 7500000,10000000 };
+	int nbElements = sizeof(iterations_sizes) / sizeof(int);
 
+	for (int i = 0; i < nbElements; i++) {
+		multiplication_iteration(iterations_sizes[i]);
+		cout << "===================================================" << endl;
+	}
+
+	return 0;
+}
+
+
+void multiplication_iteration(const int array_size) {
 	int* host_a = new int[array_size];
 	int* host_b = new int[array_size];
 
@@ -44,18 +58,17 @@ int main() {
 	delete[] host_b;
 	delete[] host_c;
 	delete[] host_cpu_res;
-
-	return 0;
 }
 
 long long cpu_computation(int* a, int* b, int* cpu_res, int arr_size) {
-	std::chrono::steady_clock::time_point start_cpu = std::chrono::high_resolution_clock::now();
+	chrono::steady_clock::time_point start_cpu = chrono::high_resolution_clock::now();
 
 	for (int i = 0; i < arr_size; i++) {
 		cpu_res[i] = a[i] * b[i];
 	}
-	std::chrono::steady_clock::time_point stop_cpu = std::chrono::high_resolution_clock::now();
-	auto cpu_runtime_us = std::chrono::duration_cast<std::chrono::microseconds>(stop_cpu - start_cpu).count();
+
+	chrono::steady_clock::time_point stop_cpu = chrono::high_resolution_clock::now();
+	auto cpu_runtime_us = chrono::duration_cast<chrono::microseconds>(stop_cpu - start_cpu).count();
 
 	return cpu_runtime_us;
 }
@@ -121,13 +134,13 @@ void initialize_arrays(int* a, int* b, int arr_size) {
 void display_metrics(long long cpu_runtime_microsec, float gpu_runtime_millisec, int arr_size) {
 	printCUDADeviceDetails();
 
-	std::cout << "Metrics for an array of " << arr_size << " elements" << std::endl;
+	cout << "Metrics for an array of " << arr_size << " elements" << endl;
 
-	std::cout << "\tCPU time :" << cpu_runtime_microsec << " us" << std::endl;
-	std::cout << "\tGPU time : " << gpu_runtime_millisec * 1000 << " us" << std::endl;
+	cout << "\tCPU time :" << cpu_runtime_microsec << " us" << endl;
+	cout << "\tGPU time : " << gpu_runtime_millisec * 1000 << " us" << endl;
 
 	float speedup = cpu_runtime_microsec / (gpu_runtime_millisec * 1000);
-	std::cout << "\tSpeedup : " << speedup << " %" << std::endl << std::endl;
+	cout << "\tSpeedup : " << speedup << " %" << endl << endl;
 
 	float memoryUsed = 3.0 * arr_size * sizeof(int);
 	float memoryThroughput = memoryUsed / gpu_runtime_millisec / 1e+6; //Divide by 1 000 000 to have GB/s
@@ -135,8 +148,8 @@ void display_metrics(long long cpu_runtime_microsec, float gpu_runtime_millisec,
 	float numOperation = 1.0 * arr_size;
 	float computationThroughput = numOperation / gpu_runtime_millisec / 1e+6; //Divide by 1 000 000 to have GOPS/s
 
-	std::cout << "\tMemory throughput : " << memoryThroughput << " GB/s " << std::endl;
-	std::cout << "\tComputation throughput : " << computationThroughput << " GOPS/s " << std::endl;
+	cout << "\tMemory throughput : " << memoryThroughput << " GB/s " << endl;
+	cout << "\tComputation throughput : " << computationThroughput << " GOPS/s " << endl;
 }
 
 bool check_results(int* cpu, int* gpu, int arr_size) {
@@ -157,12 +170,12 @@ void printCUDADeviceDetails() {
 	struct cudaDeviceProp props;
 	cudaGetDeviceProperties(&props, device);
 
-	std::cout << "CUDA Device :" << std::endl;
+	cout << "CUDA Device :" << endl;
 
-	std::cout << "\tName : " << props.name << std::endl;
-	std::cout << "\tTotal Global memory (bytes) : " << props.totalGlobalMem << std::endl;
-	std::cout << "\tWarp size : " << props.warpSize << std::endl;
-	std::cout << "\tMax. threads/block : " << props.maxThreadsPerBlock << std::endl;
-	std::cout << "\tMax. threads/SM : " << props.maxThreadsPerMultiProcessor << std::endl;
-	std::cout << "\tMax. blocks/SM : " << props.maxBlocksPerMultiProcessor << std::endl << std::endl;
+	cout << "\tName : " << props.name << endl;
+	cout << "\tTotal Global memory (bytes) : " << props.totalGlobalMem << endl;
+	cout << "\tWarp size : " << props.warpSize << endl;
+	cout << "\tMax. threads/block : " << props.maxThreadsPerBlock << endl;
+	cout << "\tMax. threads/SM : " << props.maxThreadsPerMultiProcessor << endl;
+	cout << "\tMax. blocks/SM : " << props.maxBlocksPerMultiProcessor << endl << endl;
 }
