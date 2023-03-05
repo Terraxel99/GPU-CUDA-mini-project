@@ -5,7 +5,10 @@
 #include <chrono>
 #include <iostream>
 
-#define NB_THREADS 128
+#define NB_THREADS 1024
+
+#define NB_COMPUTATIONS 4
+#define NB_ARRAYS_MEMORY 3
 
 using namespace std;
 
@@ -18,17 +21,17 @@ void display_metrics(long long cpu_runtime_microsec, float gpu_runtime_millisec,
 void printCUDADeviceDetails();
 
 __global__ void gpu_multiply_kernel(const int* a, const int* b, int* c, int arr_size) {
-	int globalId = blockDim.x * blockIdx.x + threadIdx.x;
+	int globalId = blockDim.x * blockIdx.x + threadIdx.x; // 2 operations
 
-	if (globalId >= arr_size) {
+	if (globalId >= arr_size) { // 1 operation
 		return;
 	}
 
-	c[globalId] = a[globalId] * b[globalId];
+	c[globalId] = a[globalId] * b[globalId]; // 1 operation
 }
 
 int main() {
-	int iterations_sizes[] = { 10, 100, 1000, 10000, 100000, 500000, 1000000, 2500000, 5000000, 7500000,10000000 };
+	int iterations_sizes[] = { 10, 100, 1000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 7500000, 10000000, 50000000, 100000000, 200000000 };
 	int nbElements = sizeof(iterations_sizes) / sizeof(int);
 
 	for (int i = 0; i < nbElements; i++) {
@@ -150,12 +153,18 @@ void display_metrics(long long cpu_runtime_microsec, float gpu_runtime_millisec,
 
 	cout << "\tMemory throughput : " << memoryThroughput << " GB/s " << endl;
 	cout << "\tComputation throughput : " << computationThroughput << " GOPS/s " << endl;
+
+	// CI = C / M
+	float c = NB_COMPUTATIONS;
+	float m = NB_ARRAYS_MEMORY * sizeof(int);
+
+	cout << "\tCI = " << c << "/" << m << " = " << (c / m) << endl;
 }
 
 bool check_results(int* cpu, int* gpu, int arr_size) {
 	for (int i = 0; i < arr_size; i++) {
 		if (cpu[i] != gpu[i]) {
-			printf("ERROR : cpu : %d != gpu : %d \n", cpu[i], gpu[i]);
+			printf("ERROR (%dth element): cpu : %d != gpu : %d \n", i, cpu[i], gpu[i]);
 			return false;
 		}
 	}
@@ -173,9 +182,13 @@ void printCUDADeviceDetails() {
 	cout << "CUDA Device :" << endl;
 
 	cout << "\tName : " << props.name << endl;
+	cout << "\tNumber of Multiprocessors : " << props.multiProcessorCount << endl;
 	cout << "\tTotal Global memory (bytes) : " << props.totalGlobalMem << endl;
+	cout << "\tPeak Memory Bandwidth(GB / s) : "  << (2.0 * props.memoryClockRate * (props.memoryBusWidth / 8)/ 1.0e6) << endl;
+	cout << "\tShared memory / SM (kB) : " << (props.sharedMemPerMultiprocessor / 1000) << endl;
 	cout << "\tWarp size : " << props.warpSize << endl;
 	cout << "\tMax. threads/block : " << props.maxThreadsPerBlock << endl;
 	cout << "\tMax. threads/SM : " << props.maxThreadsPerMultiProcessor << endl;
-	cout << "\tMax. blocks/SM : " << props.maxBlocksPerMultiProcessor << endl << endl;
+	cout << "\tMax. blocks/SM : " << props.maxBlocksPerMultiProcessor << endl;
+	cout << "\tCompute capability version number : " << props.major << "." << props.minor << endl << endl;
 }
