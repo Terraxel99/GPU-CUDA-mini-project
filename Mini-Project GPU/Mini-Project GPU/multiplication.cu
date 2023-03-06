@@ -7,7 +7,7 @@
 
 #define CUDA_DEVICE_NUMBER 0
 
-#define NB_THREADS 1024
+#define NB_THREADS 128
 
 #define NB_COMPUTATIONS 4
 #define NB_ARRAYS_MEMORY 3.0
@@ -19,19 +19,25 @@ using namespace std;
 void multiplication_iteration(const int array_size);
 void initialize_arrays(DATATYPE* a, DATATYPE* b, int arr_size);
 long long cpu_computation(DATATYPE* a, DATATYPE* b, DATATYPE* cpu_res, int arr_size);
-float gpu_computation(DATATYPE* host_a, DATATYPE* host_b, DATATYPE* host_c, DATATYPE* cpu_results, int arr_size);
+float gpu_computation(DATATYPE* host_a, DATATYPE* host_b, DATATYPE* host_c, DATATYPE* cpu_results, int nb_elements_per_thread, int arr_size);
 bool check_results(DATATYPE* cpu, DATATYPE* gpu, int arr_size);
 void display_metrics(long long cpu_runtime_microsec, float gpu_runtime_millisec, int arr_size);
 void printCUDADeviceDetails();
 
-__global__ void gpu_multiply_kernel(const DATATYPE* a, const DATATYPE* b, DATATYPE* c, int arr_size) {
+__global__ void gpu_multiply_kernel(const DATATYPE* a, const DATATYPE* b, DATATYPE* c, int nb_elements_per_thread, int arr_size) {
 	int globalId = blockDim.x * blockIdx.x + threadIdx.x; // 2 operations
 
-	if (globalId >= arr_size) { // 1 operation
-		return;
+	int test = globalId / nb_elements_per_thread;
+
+	for (int i = test; i < test + nb_elements_per_thread; i++) {
+		if (i >= arr_size) { // 1 operation
+			return;
+		}
+
+		c[i] = a[i] * b[i];
 	}
 
-	c[globalId] = a[globalId] * b[globalId]; // 1 operation
+	//c[test] = a[test] * b[test]; // 1 operation
 }
 
 int main() {
@@ -59,7 +65,7 @@ void multiplication_iteration(const int array_size) {
 	initialize_arrays(host_a, host_b, array_size);
 
 	long long cpu_runtime_microsec = cpu_computation(host_a, host_b, host_cpu_res, array_size);
-	float gpu_runtime_millisec = gpu_computation(host_a, host_b, host_c, host_cpu_res, array_size);
+	float gpu_runtime_millisec = gpu_computation(host_a, host_b, host_c, host_cpu_res, 3, array_size);
 
 	display_metrics(cpu_runtime_microsec, gpu_runtime_millisec, array_size);
 
@@ -82,7 +88,7 @@ long long cpu_computation(DATATYPE* a, DATATYPE* b, DATATYPE* cpu_res, int arr_s
 	return cpu_runtime_us;
 }
 
-float gpu_computation(DATATYPE* host_a, DATATYPE* host_b, DATATYPE* host_c, DATATYPE* cpu_results, int arr_size) {
+float gpu_computation(DATATYPE* host_a, DATATYPE* host_b, DATATYPE* host_c, DATATYPE* cpu_results, int nb_elements_per_thread, int arr_size) {
 	DATATYPE* device_a = 0;
 	DATATYPE* device_b = 0;
 	DATATYPE* device_c = 0;
@@ -91,7 +97,7 @@ float gpu_computation(DATATYPE* host_a, DATATYPE* host_b, DATATYPE* host_c, DATA
 	cudaEventCreate(&start_gpu);
 	cudaEventCreate(&stop_gpu);
  
-	dim3 block_size((arr_size + (NB_THREADS - 1)) / NB_THREADS);
+	dim3 block_size((arr_size + (NB_THREADS - 1)) / NB_THREADS / nb_elements_per_thread);
 	dim3 thread_size(NB_THREADS);
 
 	cudaSetDevice(CUDA_DEVICE_NUMBER);
@@ -104,11 +110,10 @@ float gpu_computation(DATATYPE* host_a, DATATYPE* host_b, DATATYPE* host_c, DATA
 	cudaMemcpy(device_b, host_b, arr_size * sizeof(DATATYPE), cudaMemcpyHostToDevice);
 
 	cudaEventRecord(start_gpu);
-	gpu_multiply_kernel <<<block_size, thread_size>>> (device_a, device_b, device_c, arr_size);
+	gpu_multiply_kernel << <block_size, thread_size >> > (device_a, device_b, device_c, nb_elements_per_thread, arr_size);
 	cudaEventRecord(stop_gpu);
 
 	cudaDeviceSynchronize();
-
 
 	// Copy output vector from GPU buffer to host memory.
 	cudaMemcpy(host_c, device_c, arr_size * sizeof(DATATYPE), cudaMemcpyDeviceToHost);
