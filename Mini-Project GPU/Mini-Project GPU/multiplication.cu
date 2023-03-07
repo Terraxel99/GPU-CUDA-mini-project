@@ -22,26 +22,25 @@ long long cpu_computation(DATATYPE* a, DATATYPE* b, DATATYPE* cpu_res, int arr_s
 float gpu_computation(DATATYPE* host_a, DATATYPE* host_b, DATATYPE* host_c, DATATYPE* cpu_results, int nb_elements_per_thread, int arr_size);
 bool check_results(DATATYPE* cpu, DATATYPE* gpu, int arr_size);
 void display_metrics(long long cpu_runtime_microsec, float gpu_runtime_millisec, int arr_size);
-void printCUDADeviceDetails();
+void print_CUDA_device_details();
 
 __global__ void gpu_multiply_kernel(const DATATYPE* a, const DATATYPE* b, DATATYPE* c, int nb_elements_per_thread, int arr_size) {
-	int globalId = blockDim.x * blockIdx.x + threadIdx.x; // 2 operations
+	int globalId = blockDim.x * blockIdx.x + threadIdx.x;
 
-	int test = globalId / nb_elements_per_thread;
+	int idx = globalId * nb_elements_per_thread;
 
-	for (int i = test; i < test + nb_elements_per_thread; i++) {
-		if (i >= arr_size) { // 1 operation
+	for (int offset = 0; offset < nb_elements_per_thread; offset++) {
+
+		if (idx + offset >= arr_size) {
 			return;
 		}
 
-		c[i] = a[i] * b[i];
+		c[idx + offset] = a[idx + offset] * b[idx + offset];
 	}
-
-	//c[test] = a[test] * b[test]; // 1 operation
 }
 
 int main() {
-	printCUDADeviceDetails();
+	print_CUDA_device_details();
 
 	int iterations_sizes[] = { 10, 100, 1000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 7500000, 10000000, 50000000, 100000000, 200000000 };
 	int nbElements = sizeof(iterations_sizes) / sizeof(int);
@@ -97,7 +96,7 @@ float gpu_computation(DATATYPE* host_a, DATATYPE* host_b, DATATYPE* host_c, DATA
 	cudaEventCreate(&start_gpu);
 	cudaEventCreate(&stop_gpu);
  
-	dim3 block_size((arr_size + (NB_THREADS - 1)) / NB_THREADS / nb_elements_per_thread);
+	dim3 block_size(((arr_size / nb_elements_per_thread) + (NB_THREADS - 1)) / NB_THREADS);
 	dim3 thread_size(NB_THREADS);
 
 	cudaSetDevice(CUDA_DEVICE_NUMBER);
@@ -178,7 +177,7 @@ bool check_results(DATATYPE* cpu, DATATYPE* gpu, int arr_size) {
 	return true;
 }
 
-void printCUDADeviceDetails() {
+void print_CUDA_device_details() {
 	struct cudaDeviceProp props;
 	cudaGetDeviceProperties(&props, CUDA_DEVICE_NUMBER);
 
