@@ -5,14 +5,17 @@
 #include <chrono>
 #include <iostream>
 
-#define CUDA_DEVICE_NUMBER 0
+#define CUDA_DEVICE_NUMBER 0 		// The ID of the GPU that is used
 
-#define NB_THREADS 128
+#define NB_THREADS_PER_BLOCK 128	// The NB of threads per block
+#define NB_ARRAYS_MEMORY 3.0 		// The number of arrays that will be allocated in memory (a, b, c)
 
-#define NB_COMPUTATIONS 4
-#define NB_ARRAYS_MEMORY 3.0
+#define NB_ELEMENTS_PER_THREAD 1	// The number of multiplications a single thread will do
+#define CI_FACTOR 1					// The number of times a thread will do the multiplication operation.
+									// Increasing this will increase computational intensity.
+									// (Number of operations will grow while memory will stay constant).
 
-#define DATATYPE float
+#define DATATYPE float				// The datatype of the arrays. Feel free to change this to any type that supports multiplication.
 
 using namespace std;
 
@@ -35,14 +38,17 @@ __global__ void gpu_multiply_kernel(const DATATYPE* a, const DATATYPE* b, DATATY
 			return;
 		}
 
-		c[idx + offset] = a[idx + offset] * b[idx + offset];
+		// Loop on operations to increase CI
+		for (int nbOperations = 0; nbOperations < CI_FACTOR; nbOperations++) {
+			c[idx + offset] = a[idx + offset] * b[idx + offset];
+		}
 	}
 }
 
 int main() {
 	print_CUDA_device_details();
 
-	int iterations_sizes[] = { 10, 100, 1000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 7500000, 10000000, 50000000, 100000000, 200000000 };
+	int iterations_sizes[] = { 10, 100, 1000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 1000000, 2500000 };
 	int nbElements = sizeof(iterations_sizes) / sizeof(int);
 
 	for (int i = 0; i < nbElements; i++) {
@@ -64,7 +70,7 @@ void multiplication_iteration(const int array_size) {
 	initialize_arrays(host_a, host_b, array_size);
 
 	long long cpu_runtime_microsec = cpu_computation(host_a, host_b, host_cpu_res, array_size);
-	float gpu_runtime_millisec = gpu_computation(host_a, host_b, host_c, host_cpu_res, 3, array_size);
+	float gpu_runtime_millisec = gpu_computation(host_a, host_b, host_c, host_cpu_res, NB_ELEMENTS_PER_THREAD, array_size);
 
 	display_metrics(cpu_runtime_microsec, gpu_runtime_millisec, array_size);
 
@@ -96,8 +102,8 @@ float gpu_computation(DATATYPE* host_a, DATATYPE* host_b, DATATYPE* host_c, DATA
 	cudaEventCreate(&start_gpu);
 	cudaEventCreate(&stop_gpu);
  
-	dim3 block_size(((arr_size / nb_elements_per_thread) + (NB_THREADS - 1)) / NB_THREADS);
-	dim3 thread_size(NB_THREADS);
+	dim3 block_size(((arr_size / nb_elements_per_thread) + (NB_THREADS_PER_BLOCK - 1)) / NB_THREADS_PER_BLOCK);
+	dim3 thread_size(NB_THREADS_PER_BLOCK);
 
 	cudaSetDevice(CUDA_DEVICE_NUMBER);
 
@@ -158,12 +164,6 @@ void display_metrics(long long cpu_runtime_microsec, float gpu_runtime_millisec,
 
 	cout << "\tMemory throughput : " << memoryThroughput << " GB/s " << endl;
 	cout << "\tComputation throughput : " << computationThroughput << " GOPS/s " << endl;
-
-	// CI = C / M
-	float c = NB_COMPUTATIONS;
-	float m = NB_ARRAYS_MEMORY * sizeof(DATATYPE);
-
-	//cout << "\tCI = " << c << "/" << m << " = " << (c / m) << endl;
 }
 
 bool check_results(DATATYPE* cpu, DATATYPE* gpu, int arr_size) {

@@ -1,2 +1,3 @@
-# GPU-CUDA-mini-project
-CUDA mini-project for GPU computing course at the ULB.
+# CUDA kernels behaviour and performance comparison
+
+For the p
