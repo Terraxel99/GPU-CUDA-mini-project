@@ -46,19 +46,17 @@ __global__ void gpu_multiply_kernel(const DATATYPE* a, const DATATYPE* b, DATATY
 }
 
 int main() {
-	print_CUDA_device_details();
-
 	int iterations_sizes[] = { 10, 100, 1000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 1000000, 2500000 };
 	int nbElements = sizeof(iterations_sizes) / sizeof(int);
 
+	print_CUDA_device_details();
+
 	for (int i = 0; i < nbElements; i++) {
 		multiplication_iteration(iterations_sizes[i]);
-		cout << "===================================================" << endl;
 	}
 
 	return 0;
 }
-
 
 void multiplication_iteration(const int array_size) {
 	DATATYPE* host_a = new DATATYPE[array_size];
