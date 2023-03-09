@@ -79,6 +79,9 @@
   <ItemGroup>
     <CudaCompile Include="multiplication.cu" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="multiplication.cu" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.1.targets" />
