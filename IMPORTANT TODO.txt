@@ -1,3 +1,0 @@
-NumOperation ligne 150 ? Pq 1.0 et pas 4.0 ? (car 4 operations dans le kernel)
-	=> Est-ce que le CI est bon alors ?
-	=> changer dans code ET dans plot !
