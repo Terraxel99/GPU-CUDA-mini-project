@@ -15,7 +15,7 @@
 									// Increasing this will increase computational intensity.
 									// (Number of operations will grow while memory will stay constant).
 
-#define DATATYPE float				// The datatype of the arrays. Feel free to change this to any type that supports multiplication.
+#define DATATYPE int				// The datatype of the arrays. Feel free to change this to any type that supports multiplication.
 
 using namespace std;
 
@@ -28,9 +28,9 @@ void display_metrics(long long cpu_runtime_microsec, float gpu_runtime_millisec,
 void print_CUDA_device_details();
 
 __global__ void gpu_multiply_kernel(const DATATYPE* a, const DATATYPE* b, DATATYPE* c, int nb_elements_per_thread, int arr_size) {
-	int globalId = blockDim.x * blockIdx.x + threadIdx.x;
+	int globalId = blockDim.x * blockIdx.x + threadIdx.x; 
 
-	int idx = globalId * nb_elements_per_thread;
+	int idx = globalId * nb_elements_per_thread; 
 
 	for (int offset = 0; offset < nb_elements_per_thread; offset++) {
 
@@ -46,7 +46,7 @@ __global__ void gpu_multiply_kernel(const DATATYPE* a, const DATATYPE* b, DATATY
 }
 
 int main() {
-	int iterations_sizes[] = { 10, 100, 1000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 1000000, 2500000 };
+	int iterations_sizes[] = { 5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5000000, 10000000 };
 	int nbElements = sizeof(iterations_sizes) / sizeof(int);
 
 	print_CUDA_device_details();
@@ -158,7 +158,7 @@ void display_metrics(long long cpu_runtime_microsec, float gpu_runtime_millisec,
 
 	/*
 		The number of operations is calculated :
-			- For each thread 2 index calc + for each calculation one branchingand the real calulations(CI_FACTOR).
+			- For each thread 2 index calc + for each calculation one branching and the real calulations (CI_FACTOR).
 			- Multiply by the number of threads.
 	*/ 
 	int nbThread = arr_size / NB_ELEMENTS_PER_THREAD; 
