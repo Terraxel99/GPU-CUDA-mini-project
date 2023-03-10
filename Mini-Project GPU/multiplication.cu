@@ -148,20 +148,29 @@ void initialize_arrays(DATATYPE* a, DATATYPE* b, int arr_size) {
 void display_metrics(long long cpu_runtime_microsec, float gpu_runtime_millisec, int arr_size) {
 	cout << "Metrics for an array of " << arr_size << " elements" << endl;
 
-	//cout << "\tCPU time :" << cpu_runtime_microsec << " us" << endl;
-	//cout << "\tGPU time : " << gpu_runtime_millisec * 1000 << " us" << endl;
+	float speedup = cpu_runtime_microsec / (gpu_runtime_millisec * 1000);
+	cout << "\tCPU time :" << cpu_runtime_microsec << " us" << endl;
+	cout << "\tGPU time : " << gpu_runtime_millisec * 1000 << " us" << endl;
+	cout << "\tSpeedup : " << speedup << " %" << endl << endl;
 
-	//float speedup = cpu_runtime_microsec / (gpu_runtime_millisec * 1000);
-	//cout << "\tSpeedup : " << speedup << " %" << endl << endl;
+	float memoryUsed = NB_ARRAYS_MEMORY * arr_size * sizeof(DATATYPE);	// Memory used in bytes
+	float memoryThroughput = memoryUsed / gpu_runtime_millisec / 1e+6;	// Divide by 1 000 000 to have GB/s
 
-	float memoryUsed = NB_ARRAYS_MEMORY * arr_size * sizeof(DATATYPE);
-	float memoryThroughput = memoryUsed / gpu_runtime_millisec / 1e+6; //Divide by 1 000 000 to have GB/s
+	/*
+		The number of operations is calculated :
+			- For each thread 2 index calc + for each calculation one branchingand the real calulations(CI_FACTOR).
+			- Multiply by the number of threads.
+	*/ 
+	int nbThread = arr_size / NB_ELEMENTS_PER_THREAD; 
+	float nbOperationsPerThread = 2 + (NB_ELEMENTS_PER_THREAD * (1 + CI_FACTOR)); 
+	float nbOperations = nbOperationsPerThread * nbThread;
 
-	float numOperation = 1.0 * arr_size;
-	float computationThroughput = numOperation / gpu_runtime_millisec / 1e+6; //Divide by 1 000 000 to have GOPS/s
+	float computationThroughput = nbOperations / gpu_runtime_millisec / 1e+6; //Divide by 1 000 000 to have GOPS/s
 
+	cout << "\tNumber of operations : " << nbOperations << endl;
 	cout << "\tMemory throughput : " << memoryThroughput << " GB/s " << endl;
-	cout << "\tComputation throughput : " << computationThroughput << " GOPS/s " << endl;
+	cout << "\tComputation throughput : " << computationThroughput << " GOPS/s " << endl << endl;
+	cout << "---------------------------------------------------------" << endl << endl;
 }
 
 bool check_results(DATATYPE* cpu, DATATYPE* gpu, int arr_size) {
@@ -191,4 +200,6 @@ void print_CUDA_device_details() {
 	cout << "\tMax. threads/SM : " << props.maxThreadsPerMultiProcessor << endl;
 	cout << "\tMax. blocks/SM : " << props.maxBlocksPerMultiProcessor << endl;
 	cout << "\tCompute capability version number : " << props.major << "." << props.minor << endl << endl;
+
+	cout << "---------------------------------------------------------" << endl << endl;
 }
